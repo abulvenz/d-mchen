@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "start": "parcel index.html",
-    "gh-pages": "rm -rf docs && parcel build index.html --dist-dir docs --public-url https://d-mchen.github.io/d-mchen/",
+    "gh-pages": "rm -rf docs && parcel build index.html --dist-dir docs --public-url https://abulvenz.github.io/d-mchen/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
