@@ -1,12 +1,14 @@
 
 body {
     background-color: chocolate;
+    display: flex;
+    justify-content: center;
 }
 
 .board {
     display: grid;
-    grid-template-columns: repeat(8, min(10vh, 10vw));
-    grid-template-rows: repeat(8, min(10vh, 10vw));
+    grid-template-columns: repeat(8, min(11.75vh, 11.75vw));
+    grid-template-rows: repeat(8, min(11.75vh, 11.75vw));
     gap: min(0.5vh, 0.5vw);
 }
 
