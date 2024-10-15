@@ -8,15 +8,21 @@ const range = (n) => Array.from({ length: n }, (_, i) => i);
 
 const coords = (i) => ({ row: i % 8, column: Math.trunc(i / 8) });
 
-const field = range(64).map((i) =>
-  use(coords(i), (c) =>
-    (c.row + c.column) % 2 && i < 24
-      ? 1
-      : (c.row + c.column) % 2 && i > 39
-      ? 2
-      : 0
-  )
-);
+const state = { field: [] };
+
+const newGame = () => {
+  state.field = range(64).map((i) =>
+    use(coords(i), (c) =>
+      (c.row + c.column) % 2 && i < 24
+        ? 1
+        : (c.row + c.column) % 2 && i > 39
+        ? 2
+        : 0
+    )
+  );
+};
+
+newGame();
 
 const stone = (vnode) => ({
   view: (vnode) =>
@@ -36,7 +42,7 @@ const stone = (vnode) => ({
 m.mount(document.body, {
   view: () =>
     div.board(
-      field.map((i, idx) =>
+      state.field.map((i, idx) =>
         div.field[
           use(coords(idx), (c) => ((c.row + c.column) % 2 ? "black" : "white"))
         ](

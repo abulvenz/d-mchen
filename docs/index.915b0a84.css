@@ -1,0 +1,2 @@
+body{background-color:#d2691e}.board{grid-template-rows:repeat(8,min(10vh,10vw));grid-template-columns:repeat(8,min(10vh,10vw));gap:min(.5vh,.5vw);display:grid}.field{background-color:#f0d9b5}.field.black{background-color:#946037}.field.white{background-color:#e9c181}.field.white.selected{background-color:#e5ab4e}.field.black.selected{background-color:#ce681b}
+/*# sourceMappingURL=index.915b0a84.css.map */
