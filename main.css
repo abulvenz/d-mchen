@@ -1,0 +1,31 @@
+
+body {
+    background-color: chocolate;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, min(10vh, 10vw));
+    grid-template-rows: repeat(8, min(10vh, 10vw));
+    gap: min(0.5vh, 0.5vw);
+}
+
+.field  {
+    background-color: #f0d9b5;
+}
+
+.field.black {
+    background-color: #946037;
+}
+
+.field.white {
+    background-color: #e9c181;
+}
+
+.field.white.selected {
+    background-color: #e5ab4e;
+}
+
+.field.black.selected {
+    background-color: #ce681b;
+}
