@@ -29,3 +29,7 @@ body {
 .field.black.selected {
     background-color: #ce681b;
 }
+
+.field.black.possible {
+    background-color: yellowgreen;
+}
