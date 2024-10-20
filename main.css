@@ -3,12 +3,13 @@ body {
     background-color: chocolate;
     display: flex;
     justify-content: center;
+    overflow: hidden;
 }
 
 .board {
     display: grid;
-    grid-template-columns: repeat(8, min(11.75vh, 11.75vw));
-    grid-template-rows: repeat(8, min(11.75vh, 11.75vw));
+    grid-template-columns: repeat(var(--N), min(11.75vh, 11.75vw));
+    grid-template-rows: repeat(var(--M), min(11.75vh, 11.75vw));
     gap: min(0.5vh, 0.5vw);
 }
 
@@ -34,4 +35,13 @@ body {
 
 .field.black.possible {
     background-color: yellowgreen;
+}
+
+.ampel {
+    position: absolute;
+    bottom: max(-5vw, -5vh);
+    right: max(-5vw, -5vh);
+    width:min(10vw, 10vh);
+    height:min(10vw, 10vh);
+    z-index: -1
 }

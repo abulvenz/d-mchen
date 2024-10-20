@@ -5,20 +5,28 @@ const { div, h1, p, button, svg, circle } = tagl(m);
 
 const use = (v, f) => f(v);
 const range = (n) => Array.from({ length: n }, (_, i) => i);
-
-const coords = (i) => ({ column: i % 8, row: Math.trunc(i / 8) });
-const index = ({ row, column }) => column + row * 8;
+const QUEEN_MULTIPLIER = 5;
+const EMPTY = 0;
 const WHITE = 2;
-const WHITE_QUEEN = 5 * WHITE;
+const WHITE_QUEEN = QUEEN_MULTIPLIER * WHITE;
 const BLACK = 3;
-const BLACK_QUEEN = 5 * BLACK;
+const BLACK_QUEEN = QUEEN_MULTIPLIER * BLACK;
 
 const state = {
+  N: 8,
+  M: 8,
   field: [],
   currentPlayer: undefined,
   selected: -1,
   possibleMoves: [],
+  config: {
+    showPossibleMoves: false,
+    captureOwnAfterIllegalMove: false,
+  },
 };
+
+const coords = (i) => ({ column: i % state.N, row: Math.trunc(i / state.N) });
+const index = ({ row, column }) => column + row * state.N;
 
 const current = () => state.currentPlayer;
 const opponent = () => (current() === WHITE ? BLACK : WHITE);
@@ -33,7 +41,7 @@ const at = (i) => state.field[i];
 const flatMap = (arr, m = (e) => e) =>
   arr.reduce((acc, v) => acc.concat(m(v)), []);
 const onBoard = ({ row, column }) =>
-  row >= 0 && row < 8 && column >= 0 && column < 8;
+  row >= 0 && row < state.M && column >= 0 && column < state.N;
 const currentStones = () =>
   state.field
     .map((e, i) => (isCurrent(e) ? i : undefined))
@@ -48,6 +56,8 @@ const resetSelection = () => {
   state.possibleMoves = [];
   state.selected = -1;
 };
+const capturesOpponent = (move) => move && move.xidx > -1;
+const capture = (idx) => (state.field[idx] = 0);
 const directions = [
   ({ row, column }) => ({ row: row - 1, column: column - 1 }),
   ({ row, column }) => ({ row: row - 1, column: column + 1 }),
@@ -101,8 +111,9 @@ const possibleMoves = (idx) => {
 };
 
 const newGame = () => {
+  resetSelection();
   state.field = range(64).map((i) =>
-    isField(i) && i < 24 ? BLACK : isField(i) && i > 39 ? WHITE : 0
+    isField(i) && i < 24 ? BLACK : isField(i) && i > 39 ? WHITE : EMPTY
   );
   state.currentPlayer = WHITE;
 };
@@ -120,15 +131,17 @@ const select = (idx) => {
   let move = state.possibleMoves.find((p) => p.idx === idx);
   if (move) {
     const type = state.field[state.selected];
-    if (move.xidx > -1) {
-      state.field[move.xidx] = 0;
+    if (capturesOpponent(move)) {
+      capture(move.xidx);
     } else {
       const allPossibleMoves = flatMap(currentStones(), possibleMoves);
       const canCapturePos = canCapture(allPossibleMoves);
       if (canCapturePos) {
-        state.field[canCapturePos.sidx] = 0;
+        if (state.config.captureOwnAfterIllegalMove)
+          capture(canCapturePos.sidx);
         resetSelection();
-        return nextPlayer();
+        if (state.config.captureOwnAfterIllegalMove) return nextPlayer();
+        else return;
       }
     }
     state.field[state.selected] = 0;
@@ -156,12 +169,15 @@ const stone = (vnode) => ({
 
 m.mount(document.body, {
   view: () => [
-    div.board(
+    div.board({style:`--N:${state.N};--M:${state.M}`},
       state.field.map((i, idx) =>
         div.field[use(coords(idx), (c) => (isField(idx) ? "black" : "white"))][
           state.selected === idx ? "selected" : ""
         ][
-          state.possibleMoves.map((p) => p.idx).includes(idx) ? "possible" : ""
+          state.config.showPossibleMoves &&
+          state.possibleMoves.map((p) => p.idx).includes(idx)
+            ? "possible"
+            : ""
         ](
           { onclick: () => select(idx) },
           i > 0
@@ -175,5 +191,6 @@ m.mount(document.body, {
         )
       )
     ),
+    div.ampel(m(stone, { color: isWhite(current()) ? "salmon" : "black" })),
   ],
 });
