@@ -15,6 +15,7 @@ const BLACK_QUEEN = QUEEN_MULTIPLIER * BLACK;
 const state = {
   N: 8,
   M: 8,
+  FIGURES_PER_USER: 12,
   field: [],
   currentPlayer: undefined,
   selected: -1,
@@ -50,7 +51,9 @@ const canCapture = (moves) => moves.find((move) => move.xidx > 0);
 const pawnMatcher = /(^_$)|(^o_$)/;
 const queenMatcher = /^(_*)(o_){0,1}$/;
 const onForeignShores = (idx) =>
-  use(coords(idx), (p) => (isWhite(at(idx)) ? p.row === 0 : p.row === 7));
+  use(coords(idx), (p) =>
+    isWhite(at(idx)) ? p.row === 0 : p.row === state.M - 1
+  );
 const queenify = (idx) => (state.field[idx] = state.field[idx] * 5);
 const resetSelection = () => {
   state.possibleMoves = [];
@@ -112,8 +115,12 @@ const possibleMoves = (idx) => {
 
 const newGame = () => {
   resetSelection();
-  state.field = range(64).map((i) =>
-    isField(i) && i < 24 ? BLACK : isField(i) && i > 39 ? WHITE : EMPTY
+  state.field = range(state.N * state.M).map((i) =>
+    isField(i) && i < state.FIGURES_PER_USER * 2
+      ? BLACK
+      : isField(i) && i > state.N * state.M - state.FIGURES_PER_USER * 2 - 1
+      ? WHITE
+      : EMPTY
   );
   state.currentPlayer = WHITE;
 };
@@ -169,7 +176,8 @@ const stone = (vnode) => ({
 
 m.mount(document.body, {
   view: () => [
-    div.board({style:`--N:${state.N};--M:${state.M}`},
+    div.board(
+      { style: `--N:${state.N};--M:${state.M}` },
       state.field.map((i, idx) =>
         div.field[use(coords(idx), (c) => (isField(idx) ? "black" : "white"))][
           state.selected === idx ? "selected" : ""
