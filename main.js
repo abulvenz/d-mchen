@@ -9,9 +9,9 @@ const range = (n) => Array.from({ length: n }, (_, i) => i);
 const coords = (i) => ({ column: i % 8, row: Math.trunc(i / 8) });
 const index = ({ row, column }) => column + row * 8;
 const WHITE = 2;
-const WHITE_QUEEN = 2 * WHITE;
+const WHITE_QUEEN = 5 * WHITE;
 const BLACK = 3;
-const BLACK_QUEEN = 2 * BLACK;
+const BLACK_QUEEN = 5 * BLACK;
 
 const state = {
   field: [],
@@ -34,10 +34,20 @@ const flatMap = (arr, m = (e) => e) =>
   arr.reduce((acc, v) => acc.concat(m(v)), []);
 const onBoard = ({ row, column }) =>
   row >= 0 && row < 8 && column >= 0 && column < 8;
-
+const currentStones = () =>
+  state.field
+    .map((e, i) => (isCurrent(e) ? i : undefined))
+    .filter((e) => e !== undefined);
+const canCapture = (moves) => moves.find((move) => move.xidx > 0);
 const pawnMatcher = /(^_$)|(^o_$)/;
 const queenMatcher = /^(_*)(o_){0,1}$/;
-
+const onForeignShores = (idx) =>
+  use(coords(idx), (p) => (isWhite(at(idx)) ? p.row === 0 : p.row === 7));
+const queenify = (idx) => (state.field[idx] = state.field[idx] * 5);
+const resetSelection = () => {
+  state.possibleMoves = [];
+  state.selected = -1;
+};
 const directions = [
   ({ row, column }) => ({ row: row - 1, column: column - 1 }),
   ({ row, column }) => ({ row: row - 1, column: column + 1 }),
@@ -48,7 +58,12 @@ const directions = [
 const defaultDirections = (color) =>
   isWhite(color || current()) ? directions.slice(0, 2) : directions.slice(2, 4);
 
-const genWord = (coords, dir, length, result = { word: "", idx: -1, xidx: -1  }) => {
+const genWord = (
+  coords,
+  dir,
+  length,
+  result = { word: "", idx: -1, xidx: -1, sidx: index(coords) }
+) => {
   if (length === 0) {
     result.idx = index(coords);
     return result;
@@ -65,26 +80,21 @@ const genWord = (coords, dir, length, result = { word: "", idx: -1, xidx: -1  })
 const possibleMoves = (idx) => {
   if (!isCurrent(at(idx))) return [];
   const dirs = isQueen(at(idx)) ? directions : defaultDirections();
-  const max = isQueen(at(idx)) ? 7 : 2;
+  const lengthes = (isQueen(at(idx)) ? range(7) : range(2)).map((l) => l + 1);
   const matcher = isQueen(at(idx)) ? queenMatcher : pawnMatcher;
 
   const words = flatMap(
-    flatMap(
-      dirs.map((dir) =>
-        range(max)
-          .map((length) =>
-            range(length + 1)
-              .map((l) => l + 1)
-              .map((l) =>
-                use(genWord(coords(idx), dir, l), (pos) =>
-                  pos && matcher.test(pos.word) ? pos : undefined
-                )
-              )
-              .filter((e) => e !== undefined)
+    dirs
+      .map((dir) =>
+        lengthes
+          .map((l) =>
+            use(genWord(coords(idx), dir, l), (pos) =>
+              pos && matcher.test(pos.word) ? pos : undefined
+            )
           )
-          .filter((e) => e.length > 0)
+          .filter((e) => e !== undefined)
       )
-    )
+      .filter((e) => e.length > 0)
   );
 
   return words;
@@ -100,27 +110,36 @@ const newGame = () => {
 newGame();
 
 const select = (idx) => {
-  if (state.selected === idx) {
-    state.selected = -1;
-    state.possibleMoves = [];
-    return;
-  }
+  if (state.selected === idx) return resetSelection();
   if (state.selected === -1) {
     if (!isCurrent(at(idx))) return;
     state.selected = idx;
     state.possibleMoves = possibleMoves(state.selected);
     return;
   }
-  let move = state.possibleMoves.find(p=>p.idx === idx);
+  let move = state.possibleMoves.find((p) => p.idx === idx);
   if (move) {
     const type = state.field[state.selected];
+    if (move.xidx > -1) {
+      state.field[move.xidx] = 0;
+    } else {
+      const allPossibleMoves = flatMap(currentStones(), possibleMoves);
+      const canCapturePos = canCapture(allPossibleMoves);
+      if (canCapturePos) {
+        state.field[canCapturePos.sidx] = 0;
+        resetSelection();
+        return nextPlayer();
+      }
+    }
     state.field[state.selected] = 0;
-    if (move.xidx>-1)
-        state.field[move.xidx] = 0 
     state.field[idx] = type;
-    state.selected = -1;
-    state.possibleMoves = [];
-    nextPlayer();
+    resetSelection();
+    if (onForeignShores(idx) && !isQueen(at(idx))) queenify(idx);
+    const allPossibleMoves = possibleMoves(idx);
+    const canCapturePos = canCapture(allPossibleMoves);
+    if (move.xidx > -1 && canCapturePos) {
+      // continue;
+    } else nextPlayer();
   }
 };
 
@@ -130,7 +149,7 @@ const stone = (vnode) => ({
       { viewBox: "0 0 100 100" },
       circle({ cx: "50", cy: "50", r: "40", fill: `${vnode.attrs.color}` }),
       vnode.attrs.queen
-        ? circle({ cx: "50", cy: "50", r: "14", fill: `${"white"}` })
+        ? circle({ cx: "50", cy: "50", r: "14", fill: `${"gray"}` })
         : null
     ),
 });
@@ -148,8 +167,8 @@ m.mount(document.body, {
           i > 0
             ? div(
                 m(stone, {
-                  color: i === 2 ? "salmon" : "black",
-                  queen: i > BLACK,
+                  color: isWhite(i) ? "salmon" : "black",
+                  queen: isQueen(i),
                 })
               )
             : undefined // use(coords(idx), (c) => c.row + "," + c.column)
