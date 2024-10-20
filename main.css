@@ -39,9 +39,9 @@ body {
 
 .ampel {
     position: absolute;
-    bottom: max(-5vw, -5vh);
-    right: max(-5vw, -5vh);
-    width:min(10vw, 10vh);
-    height:min(10vw, 10vh);
-    z-index: -1
+    bottom: max(-10vw, -10vh);
+    right: max(-10vw, -10vh);
+    width:min(20vw, 20vh);
+    height:min(20vw, 20vh);
+    z-index: 1;
 }

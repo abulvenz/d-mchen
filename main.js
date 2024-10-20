@@ -1,16 +1,34 @@
 import m from "mithril";
 import tagl from "tagl-mithril";
 
-const { div, h1, p, button, svg, circle } = tagl(m);
+const { div, h1, p, button, svg, circle, input, img } = tagl(m);
 
 const use = (v, f) => f(v);
 const range = (n) => Array.from({ length: n }, (_, i) => i);
+const CONFIG_KEY = "checker_config";
 const QUEEN_MULTIPLIER = 5;
 const EMPTY = 0;
 const WHITE = 2;
 const WHITE_QUEEN = QUEEN_MULTIPLIER * WHITE;
 const BLACK = 3;
 const BLACK_QUEEN = QUEEN_MULTIPLIER * BLACK;
+const showPossibleMovesImage = new URL(
+  "showPossibleMoves.png?as=webp&width=250",
+  import.meta.url
+);
+const captureOwnImage = new URL(
+  "captureOwn.png?as=webp&width=250",
+  import.meta.url
+);
+
+const config = use(localStorage.getItem(CONFIG_KEY), (storage) =>
+  storage
+    ? JSON.parse(storage)
+    : {
+        showPossibleMoves: true,
+        captureOwnAfterIllegalMove: false,
+      }
+);
 
 const state = {
   N: 8,
@@ -20,12 +38,14 @@ const state = {
   currentPlayer: undefined,
   selected: -1,
   possibleMoves: [],
-  config: {
-    showPossibleMoves: false,
-    captureOwnAfterIllegalMove: false,
-  },
+  config,
 };
 
+const saveConfig = () =>
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(state.config));
+
+let showOptions = false;
+const toggleOptions = () => (showOptions = !showOptions);
 const coords = (i) => ({ column: i % state.N, row: Math.trunc(i / state.N) });
 const index = ({ row, column }) => column + row * state.N;
 
@@ -176,29 +196,55 @@ const stone = (vnode) => ({
 
 m.mount(document.body, {
   view: () => [
-    div.board(
-      { style: `--N:${state.N};--M:${state.M}` },
-      state.field.map((i, idx) =>
-        div.field[use(coords(idx), (c) => (isField(idx) ? "black" : "white"))][
-          state.selected === idx ? "selected" : ""
-        ][
-          state.config.showPossibleMoves &&
-          state.possibleMoves.map((p) => p.idx).includes(idx)
-            ? "possible"
-            : ""
-        ](
-          { onclick: () => select(idx) },
-          i > 0
-            ? div(
-                m(stone, {
-                  color: isWhite(i) ? "salmon" : "black",
-                  queen: isQueen(i),
-                })
-              )
-            : undefined // use(coords(idx), (c) => c.row + "," + c.column)
+    showOptions
+      ? div(
+          div(
+            input({
+              type: "checkbox",
+              checked: state.config.showPossibleMoves,
+              onchange: (s) =>
+                saveConfig((state.config.showPossibleMoves = s.target.checked)),
+            }),
+            img({ src: showPossibleMovesImage })
+          ),
+          div(
+            input({
+              type: "checkbox",
+              checked: state.config.captureOwnAfterIllegalMove,
+              onchange: (s) =>
+                saveConfig(
+                  (state.config.captureOwnAfterIllegalMove = s.target.checked)
+                ),
+            }),
+            img({ src: captureOwnImage })
+          )
         )
-      )
+      : div.board(
+          { style: `--N:${state.N};--M:${state.M}` },
+          state.field.map((i, idx) =>
+            div.field[
+              use(coords(idx), (c) => (isField(idx) ? "black" : "white"))
+            ][state.selected === idx ? "selected" : ""][
+              state.config.showPossibleMoves &&
+              state.possibleMoves.map((p) => p.idx).includes(idx)
+                ? "possible"
+                : ""
+            ](
+              { onclick: () => select(idx) },
+              i > 0
+                ? div(
+                    m(stone, {
+                      color: isWhite(i) ? "salmon" : "black",
+                      queen: isQueen(i),
+                    })
+                  )
+                : undefined // use(coords(idx), (c) => c.row + "," + c.column)
+            )
+          )
+        ),
+    div.ampel(
+      { onclick: () => toggleOptions() },
+      m(stone, { color: isWhite(current()) ? "salmon" : "black" })
     ),
-    div.ampel(m(stone, { color: isWhite(current()) ? "salmon" : "black" })),
   ],
 });
