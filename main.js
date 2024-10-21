@@ -31,7 +31,7 @@ const config = use(localStorage.getItem(CONFIG_KEY), (storage) =>
         color1: 0,
         n: 8,
         m: 8,
-        numberOfStones: 1,
+        numberOfStones: 12,
       }
 );
 
