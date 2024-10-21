@@ -8,8 +8,8 @@ body {
 
 .board {
     display: grid;
-    grid-template-columns: repeat(var(--N), min(11.75vh, 11.75vw));
-    grid-template-rows: repeat(var(--M), min(11.75vh, 11.75vw));
+    grid-template-columns: repeat(var(--N), min(calc(90vh/var(--N)), calc(90vw/var(--N))));
+    grid-template-rows: repeat(var(--M), min(calc(90vh/var(--N)), calc(90vw/var(--N))));
     gap: min(0.5vh, 0.5vw);
 }
 
@@ -44,4 +44,14 @@ body {
     width:min(20vw, 20vh);
     height:min(20vw, 20vh);
     z-index: 1;
+}
+
+img {width:min(20vh,20vw)}
+
+.chooser {
+    display: flex;
+}
+
+.color {
+    width:min(10vw,10vh)
 }

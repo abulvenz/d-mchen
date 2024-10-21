@@ -1,11 +1,11 @@
 import m from "mithril";
 import tagl from "tagl-mithril";
-
+import colors from "./colors";
 const { div, h1, p, button, svg, circle, input, img } = tagl(m);
 
 const use = (v, f) => f(v);
 const range = (n) => Array.from({ length: n }, (_, i) => i);
-const CONFIG_KEY = "checker_config";
+const CONFIG_KEY = "checker_config_v4";
 const QUEEN_MULTIPLIER = 5;
 const EMPTY = 0;
 const WHITE = 2;
@@ -27,18 +27,21 @@ const config = use(localStorage.getItem(CONFIG_KEY), (storage) =>
     : {
         showPossibleMoves: true,
         captureOwnAfterIllegalMove: false,
+        color0: 140,
+        color1: 0,
+        n: 8,
+        m: 8,
+        numberOfStones: 1,
       }
 );
 
 const state = {
-  N: 8,
-  M: 8,
-  FIGURES_PER_USER: 12,
   field: [],
   currentPlayer: undefined,
   selected: -1,
   possibleMoves: [],
   config,
+  wins: { [WHITE]: 0, [BLACK]: 0 },
 };
 
 const saveConfig = () =>
@@ -46,33 +49,37 @@ const saveConfig = () =>
 
 let showOptions = false;
 const toggleOptions = () => (showOptions = !showOptions);
-const coords = (i) => ({ column: i % state.N, row: Math.trunc(i / state.N) });
-const index = ({ row, column }) => column + row * state.N;
+const coords = (i) => ({
+  column: i % state.config.n,
+  row: Math.trunc(i / state.config.n),
+});
+const index = ({ row, column }) => column + row * state.config.n;
 
 const current = () => state.currentPlayer;
 const opponent = () => (current() === WHITE ? BLACK : WHITE);
 const isWhite = (color) => color > 0 && color % WHITE === 0;
 const isBlack = (color) => color > 0 && color % BLACK === 0;
 const isField = (i) => use(coords(i), (c) => (c.row + c.column) % 2);
-const isCurrent = (color) => color > 0 && color % current() === 0;
-const isOpponent = (color) => color > 0 && color % opponent() === 0;
+const is = (color, playerColor) => color > 0 && color % playerColor === 0;
+const isCurrent = (color) => is(color, current());
+const isOpponent = (color) => is(color, opponent());
 const nextPlayer = () => (state.currentPlayer = opponent());
 const isQueen = (color) => color > BLACK;
 const at = (i) => state.field[i];
 const flatMap = (arr, m = (e) => e) =>
   arr.reduce((acc, v) => acc.concat(m(v)), []);
 const onBoard = ({ row, column }) =>
-  row >= 0 && row < state.M && column >= 0 && column < state.N;
-const currentStones = () =>
+  row >= 0 && row < state.config.m && column >= 0 && column < state.config.n;
+const allStones = (playerColor) =>
   state.field
-    .map((e, i) => (isCurrent(e) ? i : undefined))
+    .map((e, i) => (is(e, playerColor) ? i : undefined))
     .filter((e) => e !== undefined);
 const canCapture = (moves) => moves.find((move) => move.xidx > 0);
 const pawnMatcher = /(^_$)|(^o_$)/;
 const queenMatcher = /^(_*)(o_){0,1}$/;
 const onForeignShores = (idx) =>
   use(coords(idx), (p) =>
-    isWhite(at(idx)) ? p.row === 0 : p.row === state.M - 1
+    isWhite(at(idx)) ? p.row === 0 : p.row === state.config.m - 1
   );
 const queenify = (idx) => (state.field[idx] = state.field[idx] * 5);
 const resetSelection = () => {
@@ -117,28 +124,30 @@ const possibleMoves = (idx) => {
   const matcher = isQueen(at(idx)) ? queenMatcher : pawnMatcher;
 
   const words = flatMap(
-    dirs
-      .map((dir) =>
-        lengthes
-          .map((l) =>
-            use(genWord(coords(idx), dir, l), (pos) =>
-              pos && matcher.test(pos.word) ? pos : undefined
-            )
+    dirs.map((dir) =>
+      lengthes
+        .map((l) =>
+          use(genWord(coords(idx), dir, l), (pos) =>
+            pos && matcher.test(pos.word) ? pos : undefined
           )
-          .filter((e) => e !== undefined)
-      )
-      .filter((e) => e.length > 0)
+        )
+        .filter((e) => e !== undefined)
+    )
   );
 
   return words;
 };
+const allPossibleMoves = (playerColor) =>
+  flatMap(allStones(playerColor), possibleMoves);
 
 const newGame = () => {
   resetSelection();
-  state.field = range(state.N * state.M).map((i) =>
-    isField(i) && i < state.FIGURES_PER_USER * 2
+  state.field = range(state.config.n * state.config.m).map((i) =>
+    isField(i) && i < state.config.numberOfStones * 2
       ? BLACK
-      : isField(i) && i > state.N * state.M - state.FIGURES_PER_USER * 2 - 1
+      : isField(i) &&
+        i >
+          state.config.n * state.config.m - state.config.numberOfStones * 2 - 1
       ? WHITE
       : EMPTY
   );
@@ -160,9 +169,13 @@ const select = (idx) => {
     const type = state.field[state.selected];
     if (capturesOpponent(move)) {
       capture(move.xidx);
+      if (allPossibleMoves(opponent()).length === 0) {
+        state.field = [];
+        state.wins[current()]++;
+        return;
+      }
     } else {
-      const allPossibleMoves = flatMap(currentStones(), possibleMoves);
-      const canCapturePos = canCapture(allPossibleMoves);
+      const canCapturePos = canCapture(allPossibleMoves(current()));
       if (canCapturePos) {
         if (state.config.captureOwnAfterIllegalMove)
           capture(canCapturePos.sidx);
@@ -175,8 +188,8 @@ const select = (idx) => {
     state.field[idx] = type;
     resetSelection();
     if (onForeignShores(idx) && !isQueen(at(idx))) queenify(idx);
-    const allPossibleMoves = possibleMoves(idx);
-    const canCapturePos = canCapture(allPossibleMoves);
+    const furtherPossibleMoves = possibleMoves(idx);
+    const canCapturePos = canCapture(furtherPossibleMoves);
     if (move.xidx > -1 && canCapturePos) {
       // continue;
     } else nextPlayer();
@@ -217,10 +230,36 @@ m.mount(document.body, {
                 ),
             }),
             img({ src: captureOwnImage })
+          ),
+          div.chooser(
+            div.color(
+              {
+                onclick: () =>
+                  saveConfig(
+                    (state.config.color0 =
+                      (state.config.color0 + 1) % colors.length)
+                  ),
+              },
+              m(stone, {
+                color: colors[state.config.color0],
+              })
+            ),
+            div.color(
+              {
+                onclick: () =>
+                  saveConfig(
+                    (state.config.color1 =
+                      (state.config.color1 + 1) % colors.length)
+                  ),
+              },
+              m(stone, {
+                color: colors[state.config.color1],
+              })
+            )
           )
         )
-      : div.board(
-          { style: `--N:${state.N};--M:${state.M}` },
+      : state.field.length >0? div.board(
+          { style: `--N:${state.config.n};--M:${state.config.m}` },
           state.field.map((i, idx) =>
             div.field[
               use(coords(idx), (c) => (isField(idx) ? "black" : "white"))
@@ -234,17 +273,23 @@ m.mount(document.body, {
               i > 0
                 ? div(
                     m(stone, {
-                      color: isWhite(i) ? "salmon" : "black",
+                      color: isWhite(i)
+                        ? colors[state.config.color0]
+                        : colors[state.config.color1],
                       queen: isQueen(i),
                     })
                   )
-                : undefined // use(coords(idx), (c) => c.row + "," + c.column)
+                : null // use(coords(idx), (c) => c.row + "," + c.column)
             )
           )
-        ),
+        ):div.center(button({onclick:newGame},"New")),
     div.ampel(
       { onclick: () => toggleOptions() },
-      m(stone, { color: isWhite(current()) ? "salmon" : "black" })
+      m(stone, {
+        color: isWhite(current())
+          ? colors[state.config.color0]
+          : colors[state.config.color1],
+      })
     ),
   ],
 });
